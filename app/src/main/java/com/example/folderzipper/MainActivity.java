@@ -6,6 +6,7 @@ import androidx.core.content.ContextCompat;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.media.audiofx.EnvironmentalReverb;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -16,9 +17,13 @@ import com.developer.filepicker.model.DialogConfigs;
 import com.developer.filepicker.model.DialogProperties;
 import com.developer.filepicker.view.FilePickerDialog;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,8 +60,13 @@ public class MainActivity extends AppCompatActivity {
             public void onSelectedFilePaths(String[] files) {
                 try {
                     if(ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-
-                        ZipArchive.zip(files[0], Environment.getExternalStorageDirectory().getAbsolutePath() + "//test.zip", "");
+                        String zipParentFolderPath = context.getFilesDir() + "//" + getString(R.string.app_name);
+                        File zipParentFolder = new File(zipParentFolderPath);
+                        if (!zipParentFolder.mkdirs()) {
+                            zipParentFolder.mkdirs();
+                        }
+                        zip(files, zipParentFolder.getAbsolutePath() + "/" + "test.zip" );
+                        //ZipArchive.zip(files[0], Environment.getExternalStorageDirectory().getAbsolutePath() + "//"+getString(R.string.app_name) + "//test.zip", "");
                     }
                     else {Log.v("permission", "permission not gratend");}
                     //
@@ -70,7 +80,60 @@ public class MainActivity extends AppCompatActivity {
         });
         dialog.show();
     }
+    public void zip(String[] _files, String zipFileName) {
+        try {
+            BufferedInputStream origin = null;
+            FileOutputStream dest = new FileOutputStream(zipFileName);
+            ZipOutputStream out = new ZipOutputStream(new BufferedOutputStream(
+                    dest));
+            byte data[] = new byte[BUFFER_SIZE];
 
+            for (int i = 0; i < _files.length; i++) {
+                Log.v("Compress", "Adding: " + _files[i]);
+                FileInputStream fi = new FileInputStream(_files[i]);
+                origin = new BufferedInputStream(fi, BUFFER_SIZE);
+
+                ZipEntry entry = new ZipEntry(_files[i].substring(_files[i].lastIndexOf("/") + 1));
+                out.putNextEntry(entry);
+                int count;
+
+                while ((count = origin.read(data, 0, BUFFER_SIZE)) != -1) {
+                    out.write(data, 0, count);
+                }
+                origin.close();
+            }
+
+            out.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    private static int BUFFER_SIZE = 6 * 1024;
+
+    /*public static void zip(String[] files, String zipFile) throws IOException {
+        BufferedInputStream origin = null;
+        ZipOutputStream out = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(zipFile)));
+        try {
+            byte data[] = new byte[BUFFER_SIZE];
+
+            for (int i = 0; i < files.length; i++) {
+                FileInputStream fi = new FileInputStream(files[i]);
+                origin = new BufferedInputStream(fi, BUFFER_SIZE);
+                try {
+                    ZipEntry entry = new ZipEntry(files[i].substring(files[i].lastIndexOf("/") + 1));
+                    out.putNextEntry(entry);
+                    int count;
+                    while ((count = origin.read(data, 0, BUFFER_SIZE)) != -1) {
+                        out.write(data, 0, count);
+                    }
+                } finally {
+                    origin.close();
+                }
+            }
+        } finally {
+            out.close();
+        }
+    }*/
     private void zipFolder(final Path sourceFolderPath, Path zipPath) throws Exception {
         final ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
         Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
