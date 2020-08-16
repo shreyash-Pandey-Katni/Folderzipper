@@ -31,6 +31,7 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 import ir.mahdi.mzip.zip.ZipArchive;
@@ -65,7 +66,14 @@ public class MainActivity extends AppCompatActivity {
                         if (!zipParentFolder.mkdirs()) {
                             zipParentFolder.mkdirs();
                         }
-                        zip(files, zipParentFolder.getAbsolutePath() + "/" + "test.zip" );
+                        String[] extensionChecker = files[0].split("/");
+                        if(extensionChecker[extensionChecker.length-1].split(".").length != 0) {
+                            zip(files, zipParentFolder.getAbsolutePath() + "/" + "test.zip");
+                        }
+                        else {
+                            zipFolder(Paths.get(files[0]), Paths.get(zipParentFolderPath+ "/" + "test.zip"));
+                        }
+                        unpackZip(zipParentFolder.getAbsolutePath(), "test.zip");
                         //ZipArchive.zip(files[0], Environment.getExternalStorageDirectory().getAbsolutePath() + "//"+getString(R.string.app_name) + "//test.zip", "");
                     }
                     else {Log.v("permission", "permission not gratend");}
@@ -79,6 +87,52 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         dialog.show();
+    }
+    private boolean unpackZip(String path, String zipname)
+    {
+        InputStream is;
+        ZipInputStream zis;
+        try
+        {
+            String filename;
+            is = new FileInputStream(path + "/" + zipname);
+            zis = new ZipInputStream(new BufferedInputStream(is));
+            ZipEntry ze;
+            byte[] buffer = new byte[1024];
+            int count;
+
+            while ((ze = zis.getNextEntry()) != null)
+            {
+                filename = ze.getName();
+
+                // Need to create directories if not exists, or
+                // it will generate an Exception...
+                if (ze.isDirectory()) {
+                    File fmd = new File(path + filename);
+                    fmd.mkdirs();
+                    continue;
+                }
+
+                FileOutputStream fout = new FileOutputStream(path + filename);
+
+                while ((count = zis.read(buffer)) != -1)
+                {
+                    fout.write(buffer, 0, count);
+                }
+
+                fout.close();
+                zis.closeEntry();
+            }
+
+            zis.close();
+        }
+        catch(IOException e)
+        {
+            e.printStackTrace();
+            return false;
+        }
+
+        return true;
     }
     public void zip(String[] _files, String zipFileName) {
         try {
